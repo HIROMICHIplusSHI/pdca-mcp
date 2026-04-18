@@ -15,9 +15,11 @@ export function registerProgressTools(server: McpServer, apiClient: ApiClient): 
       }),
     },
     async (params) => {
-      const query = params.team_id ? `?team_id=${params.team_id}` : '';
+      const queryParams = new URLSearchParams();
+      if (params.team_id) queryParams.set('team_id', String(params.team_id));
+      const query = queryParams.toString();
       return handleApiCall(() =>
-        apiClient.get<{ students: ProgressStudent[] }>(`/api/v1/instructor/progress${query}`)
+        apiClient.get<{ students: ProgressStudent[] }>(`/api/v1/instructor/progress${query ? `?${query}` : ''}`)
       );
     }
   );

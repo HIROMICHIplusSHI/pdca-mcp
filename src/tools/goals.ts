@@ -52,9 +52,11 @@ export function registerGoalTools(server: McpServer, apiClient: ApiClient): void
       }),
     },
     async (params) => {
-      const query = params.limit ? `?limit=${params.limit}` : '';
+      const queryParams = new URLSearchParams();
+      if (params.limit) queryParams.set('limit', String(params.limit));
+      const query = queryParams.toString();
       return handleApiCall(() =>
-        apiClient.get<{ weekly_goals: WeeklyGoal[] }>(`/api/v1/weekly_goals${query}`)
+        apiClient.get<{ weekly_goals: WeeklyGoal[] }>(`/api/v1/weekly_goals${query ? `?${query}` : ''}`)
       );
     }
   );

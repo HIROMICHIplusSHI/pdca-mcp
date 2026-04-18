@@ -1,10 +1,17 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
-import { ApiError } from '../client/api-client.js';
 import type { AuthManager } from '../auth/auth-manager.js';
 import type { LoginResponse } from '../types/api-types.js';
-import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
+import { formatSuccess, formatError, handleApiCall, type CallToolResult } from '../utils/response.js';
+
+function classifyLoginError(status: number): string {
+  if (status === 401) return 'UNAUTHORIZED';
+  if (status === 403) return 'FORBIDDEN';
+  if (status === 422) return 'VALIDATION_ERROR';
+  if (status === 429) return 'RATE_LIMITED';
+  return 'SERVER_ERROR';
+}
 
 export function loginHandler(
   authManager: AuthManager
@@ -32,11 +39,7 @@ export function loginHandler(
         } catch {
           // 非JSONレスポンスの場合は無視
         }
-        return formatError(
-          response.status === 401 ? 'UNAUTHORIZED' : 'SERVER_ERROR',
-          response.status,
-          errors
-        );
+        return formatError(classifyLoginError(response.status), response.status, errors);
       }
 
       let data: LoginResponse;
@@ -52,10 +55,7 @@ export function loginHandler(
       });
 
       return formatSuccess({ message: 'ログイン成功', user: data.user });
-    } catch (e) {
-      if (e instanceof ApiError) {
-        return formatError(e.code, e.status, e.details);
-      }
+    } catch {
       return formatError('NETWORK_ERROR', 0);
     }
   };
@@ -74,15 +74,7 @@ export function whoamiHandler(
   apiClient: ApiClient
 ): (params: Record<string, never>) => Promise<CallToolResult> {
   return async () => {
-    try {
-      const data = await apiClient.get<{ user: LoginResponse['user'] }>('/api/v1/auth/me');
-      return formatSuccess(data);
-    } catch (e) {
-      if (e instanceof ApiError) {
-        return formatError(e.code, e.status, e.details);
-      }
-      return formatError('NETWORK_ERROR', 0);
-    }
+    return handleApiCall(() => apiClient.get<{ user: LoginResponse['user'] }>('/api/v1/auth/me'));
   };
 }
 
