@@ -1,21 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
-import { ApiError } from '../client/api-client.js';
 import type { Comment, AiComment } from '../types/api-types.js';
-import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
-
-async function handleApiCall<T>(fn: () => Promise<T>): Promise<CallToolResult> {
-  try {
-    const data = await fn();
-    return formatSuccess(data);
-  } catch (e) {
-    if (e instanceof ApiError) {
-      return formatError(e.code, e.status, e.details);
-    }
-    return formatError('NETWORK_ERROR', 0);
-  }
-}
+import { handleApiCall } from '../utils/response.js';
 
 export function registerCommentTools(server: McpServer, apiClient: ApiClient): void {
   server.registerTool(
@@ -28,9 +15,10 @@ export function registerCommentTools(server: McpServer, apiClient: ApiClient): v
       }),
     },
     async (params) => {
+      const queryParams = new URLSearchParams({ report_id: String(params.report_id) });
       return handleApiCall(() =>
         apiClient.get<{ comments: Comment[]; ai_comment: AiComment | null }>(
-          `/api/v1/comments?report_id=${params.report_id}`
+          `/api/v1/comments?${queryParams}`
         )
       );
     }

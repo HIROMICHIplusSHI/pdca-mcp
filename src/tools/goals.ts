@@ -1,21 +1,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
-import { ApiError } from '../client/api-client.js';
 import type { WeeklyGoal } from '../types/api-types.js';
-import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
+import { handleApiCall } from '../utils/response.js';
 
-async function handleApiCall<T>(fn: () => Promise<T>): Promise<CallToolResult> {
-  try {
-    const data = await fn();
-    return formatSuccess(data);
-  } catch (e) {
-    if (e instanceof ApiError) {
-      return formatError(e.code, e.status, e.details);
-    }
-    return formatError('NETWORK_ERROR', 0);
-  }
-}
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付はYYYY-MM-DD形式で指定してください');
 
 export function registerGoalTools(server: McpServer, apiClient: ApiClient): void {
   server.registerTool(
@@ -27,8 +16,8 @@ export function registerGoalTools(server: McpServer, apiClient: ApiClient): void
         items: z.array(z.object({
           content: z.string().describe('目標の内容'),
           category_id: z.number().optional().describe('カテゴリID'),
-        })).describe('目標項目リスト（最大10件）'),
-        week_start: z.string().optional().describe('週の開始日（YYYY-MM-DD）'),
+        })).max(10).describe('目標項目リスト（最大10件）'),
+        week_start: dateSchema.optional().describe('週の開始日（YYYY-MM-DD）'),
         force: z.boolean().optional().describe('既存の目標を上書きするか'),
       }),
     },
@@ -59,7 +48,7 @@ export function registerGoalTools(server: McpServer, apiClient: ApiClient): void
       title: '目標一覧',
       description: '週次目標の一覧を取得する',
       inputSchema: z.object({
-        limit: z.number().optional().describe('取得件数（1-50、デフォルト10）'),
+        limit: z.number().int().min(1).max(50).optional().describe('取得件数（1-50、デフォルト10）'),
       }),
     },
     async (params) => {
@@ -80,7 +69,7 @@ export function registerGoalTools(server: McpServer, apiClient: ApiClient): void
         items: z.array(z.object({
           id: z.number().describe('アイテムID'),
           content: z.string().optional().describe('更新後の内容'),
-          progress: z.number().optional().describe('進捗率（0-100）'),
+          progress: z.number().min(0).max(100).optional().describe('進捗率（0-100）'),
         })).describe('更新するアイテム'),
       }),
     },

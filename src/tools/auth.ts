@@ -7,7 +7,6 @@ import type { LoginResponse } from '../types/api-types.js';
 import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
 
 export function loginHandler(
-  apiClient: ApiClient,
   authManager: AuthManager
 ): (params: { email: string; password: string; api_url?: string }) => Promise<CallToolResult> {
   return async ({ email, password, api_url }) => {
@@ -26,15 +25,26 @@ export function loginHandler(
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        let errors: Record<string, string[]> | undefined;
+        try {
+          const data = await response.json();
+          errors = data.errors;
+        } catch {
+          // 非JSONレスポンスの場合は無視
+        }
         return formatError(
           response.status === 401 ? 'UNAUTHORIZED' : 'SERVER_ERROR',
           response.status,
-          data.errors
+          errors
         );
       }
 
-      const data = (await response.json()) as LoginResponse;
+      let data: LoginResponse;
+      try {
+        data = (await response.json()) as LoginResponse;
+      } catch {
+        return formatError('PARSE_ERROR', response.status);
+      }
       authManager.saveConfig({
         api_url: targetUrl,
         token: data.token,
@@ -92,7 +102,7 @@ export function registerAuthTools(
         api_url: z.string().optional().describe('API URL（初回ログイン時は必須）'),
       }),
     },
-    loginHandler(apiClient, authManager)
+    loginHandler(authManager)
   );
 
   server.registerTool(

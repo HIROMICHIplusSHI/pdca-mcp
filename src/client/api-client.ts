@@ -12,11 +12,13 @@ export class ApiError extends Error {
 }
 
 function classifyError(status: number): string {
+  if (status === 400) return 'BAD_REQUEST';
   if (status === 401) return 'UNAUTHORIZED';
   if (status === 403) return 'FORBIDDEN';
   if (status === 404) return 'NOT_FOUND';
   if (status === 409) return 'CONFLICT';
   if (status === 422) return 'VALIDATION_ERROR';
+  if (status === 429) return 'RATE_LIMITED';
   if (status >= 500) return 'SERVER_ERROR';
   return 'UNKNOWN_ERROR';
 }
@@ -57,7 +59,15 @@ export class ApiClient {
       return null;
     }
 
-    const data = await response.json();
+    let data: Record<string, unknown>;
+    try {
+      data = await response.json();
+    } catch {
+      throw new ApiError(
+        response.ok ? 'PARSE_ERROR' : classifyError(response.status),
+        response.status
+      );
+    }
 
     if (!response.ok) {
       const code = classifyError(response.status);

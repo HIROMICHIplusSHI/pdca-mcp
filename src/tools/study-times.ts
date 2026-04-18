@@ -1,21 +1,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
-import { ApiError } from '../client/api-client.js';
 import type { StudyTimeResponse } from '../types/api-types.js';
-import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
+import { handleApiCall } from '../utils/response.js';
 
-async function handleApiCall<T>(fn: () => Promise<T>): Promise<CallToolResult> {
-  try {
-    const data = await fn();
-    return formatSuccess(data);
-  } catch (e) {
-    if (e instanceof ApiError) {
-      return formatError(e.code, e.status, e.details);
-    }
-    return formatError('NETWORK_ERROR', 0);
-  }
-}
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付はYYYY-MM-DD形式で指定してください');
 
 export function registerStudyTimeTools(server: McpServer, apiClient: ApiClient): void {
   server.registerTool(
@@ -24,12 +13,13 @@ export function registerStudyTimeTools(server: McpServer, apiClient: ApiClient):
       title: '学習時間取得',
       description: '指定日の学習時間（予定・実績スロット）を取得する',
       inputSchema: z.object({
-        date: z.string().describe('日付（YYYY-MM-DD）'),
+        date: dateSchema.describe('日付（YYYY-MM-DD）'),
       }),
     },
     async (params) => {
+      const queryParams = new URLSearchParams({ date: params.date });
       return handleApiCall(() =>
-        apiClient.get<StudyTimeResponse>(`/api/v1/study_times?date=${params.date}`)
+        apiClient.get<StudyTimeResponse>(`/api/v1/study_times?${queryParams}`)
       );
     }
   );
@@ -40,7 +30,7 @@ export function registerStudyTimeTools(server: McpServer, apiClient: ApiClient):
       title: '学習時間記録',
       description: '指定日の学習時間スロットを記録する（既存スロットは上書き）',
       inputSchema: z.object({
-        date: z.string().describe('日付（YYYY-MM-DD）'),
+        date: dateSchema.describe('日付（YYYY-MM-DD）'),
         slots: z.array(z.string()).describe('時間スロット（例: ["09:00-12:00", "14:00-17:00"]）'),
         slot_type: z.enum(['actual', 'planned']).optional().describe('スロット種別（デフォルト: actual）'),
       }),

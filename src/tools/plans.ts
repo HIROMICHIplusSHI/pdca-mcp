@@ -1,21 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
-import { ApiError } from '../client/api-client.js';
 import type { Plan, PlanCategory } from '../types/api-types.js';
-import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
-
-async function handleApiCall<T>(fn: () => Promise<T>): Promise<CallToolResult> {
-  try {
-    const data = await fn();
-    return formatSuccess(data);
-  } catch (e) {
-    if (e instanceof ApiError) {
-      return formatError(e.code, e.status, e.details);
-    }
-    return formatError('NETWORK_ERROR', 0);
-  }
-}
+import { handleApiCall } from '../utils/response.js';
 
 export function registerPlanTools(server: McpServer, apiClient: ApiClient): void {
   server.registerTool(
@@ -27,7 +14,7 @@ export function registerPlanTools(server: McpServer, apiClient: ApiClient): void
         course_name: z.string().optional().describe('コース名'),
         categories: z.array(z.object({
           name: z.string().describe('カテゴリ名'),
-          estimated_hours: z.number().describe('見積もり時間'),
+          estimated_hours: z.number().min(0).describe('見積もり時間'),
         })).describe('学習カテゴリ'),
       }),
     },
@@ -59,7 +46,7 @@ export function registerPlanTools(server: McpServer, apiClient: ApiClient): void
       description: '学習計画にカテゴリを追加する',
       inputSchema: z.object({
         name: z.string().describe('カテゴリ名'),
-        estimated_hours: z.number().describe('見積もり時間'),
+        estimated_hours: z.number().min(0).describe('見積もり時間'),
       }),
     },
     async (params) => {

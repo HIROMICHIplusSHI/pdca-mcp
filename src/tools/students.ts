@@ -1,21 +1,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
-import { ApiError } from '../client/api-client.js';
 import type { StudentSummary, StudentDetail, ReportListResponse, StudentReportDetail } from '../types/api-types.js';
-import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
+import { handleApiCall } from '../utils/response.js';
 
-async function handleApiCall<T>(fn: () => Promise<T>): Promise<CallToolResult> {
-  try {
-    const data = await fn();
-    return formatSuccess(data);
-  } catch (e) {
-    if (e instanceof ApiError) {
-      return formatError(e.code, e.status, e.details);
-    }
-    return formatError('NETWORK_ERROR', 0);
-  }
-}
+const monthSchema = z.string().regex(/^\d{4}-\d{2}$/, '月はYYYY-MM形式で指定してください');
 
 export function registerStudentTools(server: McpServer, apiClient: ApiClient): void {
   server.registerTool(
@@ -63,8 +52,8 @@ export function registerStudentTools(server: McpServer, apiClient: ApiClient): v
       description: '特定の受講生のレポート一覧を取得する（講師専用）',
       inputSchema: z.object({
         student_id: z.number().describe('受講生ID'),
-        month: z.string().optional().describe('月フィルタ（YYYY-MM）'),
-        limit: z.number().optional().describe('取得件数'),
+        month: monthSchema.optional().describe('月フィルタ（YYYY-MM）'),
+        limit: z.number().int().min(1).max(100).optional().describe('取得件数'),
       }),
     },
     async (params) => {

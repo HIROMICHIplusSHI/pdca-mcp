@@ -38,7 +38,7 @@ describe('Auth Tools', () => {
       };
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockFetchResponse));
 
-      const handler = loginHandler(apiClient, authManager);
+      const handler = loginHandler(authManager);
       const result = await handler({
         email: 'tanaka@example.com',
         password: 'pass123',
@@ -63,7 +63,7 @@ describe('Auth Tools', () => {
       };
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockFetchResponse));
 
-      const handler = loginHandler(apiClient, authManager);
+      const handler = loginHandler(authManager);
       const result = await handler({
         email: 'wrong@example.com',
         password: 'wrong',
@@ -78,7 +78,7 @@ describe('Auth Tools', () => {
     it('API URL未指定でgetApiUrlもnullの場合エラーを返す', async () => {
       (authManager.getApiUrl as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
-      const handler = loginHandler(apiClient, authManager);
+      const handler = loginHandler(authManager);
       const result = await handler({
         email: 'test@example.com',
         password: 'pass',

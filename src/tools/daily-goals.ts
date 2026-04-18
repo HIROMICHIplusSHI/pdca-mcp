@@ -1,21 +1,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
-import { ApiError } from '../client/api-client.js';
 import type { DailyGoal, DailyGoalItem } from '../types/api-types.js';
-import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
+import { handleApiCall } from '../utils/response.js';
 
-async function handleApiCall<T>(fn: () => Promise<T>): Promise<CallToolResult> {
-  try {
-    const data = await fn();
-    return formatSuccess(data);
-  } catch (e) {
-    if (e instanceof ApiError) {
-      return formatError(e.code, e.status, e.details);
-    }
-    return formatError('NETWORK_ERROR', 0);
-  }
-}
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付はYYYY-MM-DD形式で指定してください');
 
 export function registerDailyGoalTools(server: McpServer, apiClient: ApiClient): void {
   server.registerTool(
@@ -24,12 +13,13 @@ export function registerDailyGoalTools(server: McpServer, apiClient: ApiClient):
       title: '日次目標取得',
       description: '指定日の日次目標を取得する',
       inputSchema: z.object({
-        date: z.string().describe('日付（YYYY-MM-DD）'),
+        date: dateSchema.describe('日付（YYYY-MM-DD）'),
       }),
     },
     async (params) => {
+      const queryParams = new URLSearchParams({ date: params.date });
       return handleApiCall(() =>
-        apiClient.get<{ daily_goals: DailyGoal[] }>(`/api/v1/daily_goals?date=${params.date}`)
+        apiClient.get<{ daily_goals: DailyGoal[] }>(`/api/v1/daily_goals?${queryParams}`)
       );
     }
   );
@@ -40,12 +30,13 @@ export function registerDailyGoalTools(server: McpServer, apiClient: ApiClient):
       title: '日次目標一覧',
       description: '指定週の日次目標一覧を取得する（週の開始日を指定）',
       inputSchema: z.object({
-        week: z.string().describe('週の開始日（YYYY-MM-DD）'),
+        week: dateSchema.describe('週の開始日（YYYY-MM-DD）'),
       }),
     },
     async (params) => {
+      const queryParams = new URLSearchParams({ week: params.week });
       return handleApiCall(() =>
-        apiClient.get<{ daily_goals: DailyGoal[] }>(`/api/v1/daily_goals?week=${params.week}`)
+        apiClient.get<{ daily_goals: DailyGoal[] }>(`/api/v1/daily_goals?${queryParams}`)
       );
     }
   );
