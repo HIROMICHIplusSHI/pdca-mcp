@@ -30,11 +30,17 @@ export function registerReportTools(server: McpServer, apiClient: ApiClient): vo
         learning_action: z.string().optional().describe('Action: 改善策'),
         learning_status: z.enum(['green', 'yellow', 'red']).optional().describe('学習状況'),
         report_date: z.string().optional().describe('報告日（YYYY-MM-DD、省略時は今日）'),
+        curriculum_name: z.string().optional().describe('カリキュラム名'),
+        code_content: z.string().optional().describe('提出コード'),
       }),
     },
     async (params) => {
+      const report = {
+        ...params,
+        report_date: params.report_date ?? new Date().toISOString().slice(0, 10),
+      };
       return handleApiCall(() =>
-        apiClient.post<{ report: Report }>('/api/v1/reports', { report: params })
+        apiClient.post<{ report: Report }>('/api/v1/reports', { report })
       );
     }
   );
@@ -112,6 +118,8 @@ export function registerReportTools(server: McpServer, apiClient: ApiClient): vo
         learning_check: z.string().optional().describe('Check: 振り返り'),
         learning_action: z.string().optional().describe('Action: 改善策'),
         learning_status: z.enum(['green', 'yellow', 'red']).optional().describe('学習状況'),
+        curriculum_name: z.string().optional().describe('カリキュラム名'),
+        code_content: z.string().optional().describe('提出コード'),
       }),
     },
     async (params) => {
