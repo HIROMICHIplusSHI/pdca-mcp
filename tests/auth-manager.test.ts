@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AuthManager } from '../src/auth/auth-manager.js';
-import { writeFileSync, unlinkSync, existsSync } from 'fs';
+import { unlinkSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 

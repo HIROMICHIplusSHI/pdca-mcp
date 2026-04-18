@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, unlinkSync, existsSync, chmodSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import type { AuthConfig } from '../types/api-types.js';
@@ -25,8 +25,7 @@ export class AuthManager {
   }
 
   saveConfig(config: AuthConfig): void {
-    writeFileSync(this.configPath, JSON.stringify(config, null, 2), 'utf-8');
-    chmodSync(this.configPath, 0o600);
+    writeFileSync(this.configPath, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
   }
 
   deleteConfig(): void {
