@@ -12,7 +12,7 @@ PDCA報告アプリ用のMCPサーバー。Claude Code / Claude DesktopからPDC
 ### インストール
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:HIROMICHIplusSHI/pdca-mcp.git
 cd pdca-mcp
 npm install
 npm run build
