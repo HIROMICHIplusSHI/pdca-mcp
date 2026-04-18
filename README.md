@@ -77,6 +77,8 @@ Claude Code / Claude Desktop 上で自然言語で操作できます:
 - `daily_list` - 日次目標一覧
 - `daily_update` - 日次目標更新
 
+> **注**: `report_create` / `report_update` で `learning_plan` を指定すると、該当日の日次目標アイテムへ自動反映されます（改行区切りで `items` に position 昇順マッピング）。アプリUIの「Plan」欄は `daily_goals` を参照するため、レポートの Plan と UI 表示が乖離しないようにするための挙動です。根本解決は API 側対応待ち（[koki-kato/pdca-app#90](https://github.com/koki-kato/pdca-app/issues/90)）。
+
 ### コメント（3）
 - `comment_list` - コメント一覧
 - `comment_create` - コメント作成

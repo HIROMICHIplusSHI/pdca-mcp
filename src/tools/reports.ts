@@ -2,8 +2,10 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
 import type { Report, ReportListResponse } from '../types/api-types.js';
-import { handleApiCall } from '../utils/response.js';
+import { formatSuccess, formatError, handleApiCall } from '../utils/response.js';
 import { todayJST } from '../utils/date.js';
+import { syncDailyGoalForDate } from '../utils/sync-daily-goal.js';
+import { ApiError } from '../client/api-client.js';
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付はYYYY-MM-DD形式で指定してください');
 const monthSchema = z.string().regex(/^\d{4}-\d{2}$/, '月はYYYY-MM形式で指定してください');
@@ -30,9 +32,21 @@ export function registerReportTools(server: McpServer, apiClient: ApiClient): vo
         ...params,
         report_date: params.report_date ?? todayJST(),
       };
-      return handleApiCall(() =>
-        apiClient.post<{ report: Report }>('/api/v1/reports', { report })
-      );
+      try {
+        const response = await apiClient.post<{ report: Report }>(
+          '/api/v1/reports',
+          { report }
+        );
+        if (report.learning_plan) {
+          await syncDailyGoalForDate(apiClient, report.report_date, report.learning_plan);
+        }
+        return formatSuccess(response);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          return formatError(e.code, e.status, e.details);
+        }
+        return formatError('NETWORK_ERROR', 0);
+      }
     }
   );
 
@@ -114,9 +128,25 @@ export function registerReportTools(server: McpServer, apiClient: ApiClient): vo
     },
     async (params) => {
       const { id, ...reportFields } = params;
-      return handleApiCall(() =>
-        apiClient.patch<{ report: Report }>(`/api/v1/reports/${id}`, { report: reportFields })
-      );
+      try {
+        const response = await apiClient.patch<{ report: Report }>(
+          `/api/v1/reports/${id}`,
+          { report: reportFields }
+        );
+        if (reportFields.learning_plan && response?.report?.report_date) {
+          await syncDailyGoalForDate(
+            apiClient,
+            response.report.report_date,
+            reportFields.learning_plan
+          );
+        }
+        return formatSuccess(response);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          return formatError(e.code, e.status, e.details);
+        }
+        return formatError('NETWORK_ERROR', 0);
+      }
     }
   );
 }
