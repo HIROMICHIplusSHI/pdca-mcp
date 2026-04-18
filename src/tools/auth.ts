@@ -1,0 +1,117 @@
+import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ApiClient } from '../client/api-client.js';
+import { ApiError } from '../client/api-client.js';
+import type { AuthManager } from '../auth/auth-manager.js';
+import type { LoginResponse } from '../types/api-types.js';
+import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
+
+export function loginHandler(
+  apiClient: ApiClient,
+  authManager: AuthManager
+): (params: { email: string; password: string; api_url?: string }) => Promise<CallToolResult> {
+  return async ({ email, password, api_url }) => {
+    try {
+      const targetUrl = api_url ?? authManager.getApiUrl() ?? '';
+      if (!targetUrl) {
+        return formatError('UNAUTHORIZED', 401, {
+          api_url: ['API URLを指定してください'],
+        });
+      }
+
+      const response = await fetch(`${targetUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        return formatError(
+          response.status === 401 ? 'UNAUTHORIZED' : 'SERVER_ERROR',
+          response.status,
+          data.errors
+        );
+      }
+
+      const data = (await response.json()) as LoginResponse;
+      authManager.saveConfig({
+        api_url: targetUrl,
+        token: data.token,
+        user: data.user,
+      });
+
+      return formatSuccess({ message: 'ログイン成功', user: data.user });
+    } catch (e) {
+      if (e instanceof ApiError) {
+        return formatError(e.code, e.status, e.details);
+      }
+      return formatError('NETWORK_ERROR', 0);
+    }
+  };
+}
+
+export function logoutHandler(
+  authManager: AuthManager
+): (params: Record<string, never>) => Promise<CallToolResult> {
+  return async () => {
+    authManager.deleteConfig();
+    return formatSuccess({ message: 'ログアウトしました' });
+  };
+}
+
+export function whoamiHandler(
+  apiClient: ApiClient
+): (params: Record<string, never>) => Promise<CallToolResult> {
+  return async () => {
+    try {
+      const data = await apiClient.get<{ user: LoginResponse['user'] }>('/api/v1/auth/me');
+      return formatSuccess(data);
+    } catch (e) {
+      if (e instanceof ApiError) {
+        return formatError(e.code, e.status, e.details);
+      }
+      return formatError('NETWORK_ERROR', 0);
+    }
+  };
+}
+
+export function registerAuthTools(
+  server: McpServer,
+  apiClient: ApiClient,
+  authManager: AuthManager
+): void {
+  server.registerTool(
+    'login',
+    {
+      title: 'ログイン',
+      description: 'PDCAアプリにログインしてトークンを保存する',
+      inputSchema: z.object({
+        email: z.string().describe('メールアドレス'),
+        password: z.string().describe('パスワード'),
+        api_url: z.string().optional().describe('API URL（初回ログイン時は必須）'),
+      }),
+    },
+    loginHandler(apiClient, authManager)
+  );
+
+  server.registerTool(
+    'logout',
+    {
+      title: 'ログアウト',
+      description: '保存済みの認証トークンを削除する',
+      inputSchema: z.object({}),
+    },
+    logoutHandler(authManager)
+  );
+
+  server.registerTool(
+    'whoami',
+    {
+      title: '現在のユーザー',
+      description: '現在ログイン中のユーザー情報を取得する',
+      inputSchema: z.object({}),
+    },
+    whoamiHandler(apiClient)
+  );
+}
