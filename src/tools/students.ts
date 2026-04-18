@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
 import { ApiError } from '../client/api-client.js';
-import type { StudentSummary, StudentDetail, ReportListResponse } from '../types/api-types.js';
+import type { StudentSummary, StudentDetail, ReportListResponse, StudentReportDetail } from '../types/api-types.js';
 import { formatSuccess, formatError, type CallToolResult } from '../utils/response.js';
 
 async function handleApiCall<T>(fn: () => Promise<T>): Promise<CallToolResult> {
@@ -60,7 +60,7 @@ export function registerStudentTools(server: McpServer, apiClient: ApiClient): v
     'student_reports',
     {
       title: '受講生レポート一覧',
-      description: '特定の受講生のレポート一覧を取得する（講師専用）。※バックエンドにエンドポイントが存在しない場合はエラーになります。',
+      description: '特定の受講生のレポート一覧を取得する（講師専用）',
       inputSchema: z.object({
         student_id: z.number().describe('受講生ID'),
         month: z.string().optional().describe('月フィルタ（YYYY-MM）'),
@@ -74,6 +74,22 @@ export function registerStudentTools(server: McpServer, apiClient: ApiClient): v
       const query = queryParams.toString();
       const path = `/api/v1/instructor/students/${params.student_id}/reports${query ? `?${query}` : ''}`;
       return handleApiCall(() => apiClient.get<ReportListResponse>(path));
+    }
+  );
+
+  server.registerTool(
+    'student_report_show',
+    {
+      title: '受講生レポート詳細',
+      description: '特定の受講生のレポート詳細を取得する（講師専用）。週次目標、コメント、AIレビュー、コード提出を含む。',
+      inputSchema: z.object({
+        student_id: z.number().describe('受講生ID'),
+        report_id: z.number().describe('レポートID'),
+      }),
+    },
+    async (params) => {
+      const path = `/api/v1/instructor/students/${params.student_id}/reports/${params.report_id}`;
+      return handleApiCall(() => apiClient.get<{ report: StudentReportDetail }>(path));
     }
   );
 }

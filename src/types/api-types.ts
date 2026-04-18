@@ -192,6 +192,35 @@ export interface DailyGoal {
   items: DailyGoalItem[];
 }
 
+export interface StudentReportWeeklyGoal {
+  id: number;
+  week_start_date: string;
+  week_end_date: string;
+  items: {
+    id: number;
+    content: string;
+    progress: number;
+    category_id: number | null;
+  }[];
+}
+
+export interface StudentReportDetail {
+  id: number;
+  report_date: string;
+  weekly_goal: StudentReportWeeklyGoal | null;
+  learning_status: 'green' | 'yellow' | 'red' | null;
+  learning_plan: string | null;
+  learning_do: string | null;
+  learning_check: string | null;
+  learning_action: string | null;
+  curriculum_name: string | null;
+  code_content: string | null;
+  comments: Comment[];
+  ai_comment: AiComment | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ApiErrorResponse {
   error: string;
   status: number;
