@@ -9,6 +9,8 @@ import { registerCommentTools } from './tools/comments.js';
 import { registerStudentTools } from './tools/students.js';
 import { registerProgressTools } from './tools/progress.js';
 import { registerDashboardTools } from './tools/dashboard.js';
+import { registerStudyTimeTools } from './tools/study-times.js';
+import { registerDailyGoalTools } from './tools/daily-goals.js';
 
 export function createServer(): {
   server: McpServer;
@@ -31,6 +33,8 @@ export function createServer(): {
   registerStudentTools(server, apiClient);
   registerProgressTools(server, apiClient);
   registerDashboardTools(server, apiClient);
+  registerStudyTimeTools(server, apiClient);
+  registerDailyGoalTools(server, apiClient);
 
   return { server, authManager, apiClient };
 }

@@ -25,6 +25,7 @@ export interface Report {
   learning_check: string | null;
   learning_action: string | null;
   curriculum_name: string | null;
+  code_content: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -162,6 +163,33 @@ export interface ProgressDetail {
       position: number;
     }[];
   }[];
+}
+
+export interface StudyTimeSlot {
+  id: number;
+  start_time: string;
+  end_time: string;
+  slot_type: 'planned' | 'actual';
+}
+
+export interface StudyTimeResponse {
+  date: string;
+  planned_slots: StudyTimeSlot[];
+  actual_slots: StudyTimeSlot[];
+}
+
+export interface DailyGoalItem {
+  id: number;
+  content: string;
+  progress: number;
+  position: number;
+}
+
+export interface DailyGoal {
+  id: number;
+  goal_date: string;
+  weekly_goal_id: number;
+  items: DailyGoalItem[];
 }
 
 export interface ApiErrorResponse {
