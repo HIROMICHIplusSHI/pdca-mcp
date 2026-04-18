@@ -29,13 +29,15 @@ export async function syncDailyGoalForDate(
       `/api/v1/daily_goals?${queryParams}`
     );
     dailyGoal = response?.daily_goals?.[0];
-  } catch {
+  } catch (e) {
+    console.error('[sync-daily-goal] 日次目標取得に失敗:', e);
     return;
   }
 
   if (!dailyGoal || !dailyGoal.items?.length) return;
 
-  const lines = learningPlan.split('\n');
+  const goalId = dailyGoal.id;
+  const lines = learningPlan.split(/\r?\n/);
   const sortedItems = [...dailyGoal.items].sort(
     (a, b) => a.position - b.position
   );
@@ -44,7 +46,7 @@ export async function syncDailyGoalForDate(
     .map((item, idx) => ({ item, content: lines[idx] }));
 
   await Promise.all(
-    pairs.map(({ item, content }) => updateItemSafely(apiClient, dailyGoal!.id, item, content))
+    pairs.map(({ item, content }) => updateItemSafely(apiClient, goalId, item, content))
   );
 }
 
@@ -59,7 +61,11 @@ async function updateItemSafely(
       `/api/v1/daily_goals/${dailyGoalId}/items/${item.id}`,
       { content }
     );
-  } catch {
-    // 個別失敗は無視（同期はベストエフォート）
+  } catch (e) {
+    // 個別失敗は無視（同期はベストエフォート）だが運用追跡のため stderr に残す
+    console.error(
+      `[sync-daily-goal] item ${item.id} (daily_goal ${dailyGoalId}) の更新に失敗:`,
+      e
+    );
   }
 }

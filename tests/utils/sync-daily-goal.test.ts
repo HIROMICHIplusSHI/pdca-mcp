@@ -8,6 +8,7 @@ describe('syncDailyGoalForDate', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     apiClient = {
       get: vi.fn(),
       post: vi.fn(),
@@ -167,6 +168,89 @@ describe('syncDailyGoalForDate', () => {
     await expect(
       syncDailyGoalForDate(apiClient, '2026-04-18', '新1\n新2')
     ).resolves.toBeUndefined();
+  });
+
+  it('CRLF改行でも正しく分割する', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      daily_goals: [
+        {
+          id: 100,
+          goal_date: '2026-04-18',
+          weekly_goal_id: 10,
+          items: [
+            { id: 11, content: '旧1', progress: 0, position: 0 },
+            { id: 12, content: '旧2', progress: 0, position: 1 },
+          ],
+        },
+      ],
+    });
+
+    await syncDailyGoalForDate(apiClient, '2026-04-18', '新1\r\n新2');
+
+    expect(apiClient.patch).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/daily_goals/100/items/11',
+      { content: '新1' }
+    );
+    expect(apiClient.patch).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/daily_goals/100/items/12',
+      { content: '新2' }
+    );
+  });
+
+  it('空行が含まれる場合はそのまま空文字で更新（仕様）', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      daily_goals: [
+        {
+          id: 100,
+          goal_date: '2026-04-18',
+          weekly_goal_id: 10,
+          items: [
+            { id: 11, content: '旧1', progress: 0, position: 0 },
+            { id: 12, content: '旧2', progress: 0, position: 1 },
+            { id: 13, content: '旧3', progress: 0, position: 2 },
+          ],
+        },
+      ],
+    });
+
+    await syncDailyGoalForDate(apiClient, '2026-04-18', '行1\n\n行3');
+
+    expect(apiClient.patch).toHaveBeenCalledTimes(3);
+    expect(apiClient.patch).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/daily_goals/100/items/12',
+      { content: '' }
+    );
+  });
+
+  it('GETレスポンスがnull(204等)なら何もしない', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await syncDailyGoalForDate(apiClient, '2026-04-18', 'MCP実装');
+
+    expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
+  it('daily_goalsキーが無いレスポンスでも何もしない', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({});
+
+    await syncDailyGoalForDate(apiClient, '2026-04-18', 'MCP実装');
+
+    expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
+  it('itemsが無いdaily_goalでも何もしない', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      daily_goals: [
+        { id: 100, goal_date: '2026-04-18', weekly_goal_id: 10, items: [] },
+      ],
+    });
+
+    await syncDailyGoalForDate(apiClient, '2026-04-18', 'MCP実装');
+
+    expect(apiClient.patch).not.toHaveBeenCalled();
   });
 
   it('positionが昇順でない場合もposition昇順で処理する', async () => {
