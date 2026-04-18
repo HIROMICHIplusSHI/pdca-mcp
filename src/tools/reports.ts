@@ -2,14 +2,11 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
 import type { Report, ReportListResponse } from '../types/api-types.js';
-import { formatError, handleApiCall } from '../utils/response.js';
+import { handleApiCall } from '../utils/response.js';
+import { todayJST } from '../utils/date.js';
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付はYYYY-MM-DD形式で指定してください');
 const monthSchema = z.string().regex(/^\d{4}-\d{2}$/, '月はYYYY-MM形式で指定してください');
-
-function todayJST(): string {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
-}
 
 export function registerReportTools(server: McpServer, apiClient: ApiClient): void {
   server.registerTool(
@@ -61,23 +58,21 @@ export function registerReportTools(server: McpServer, apiClient: ApiClient): vo
       inputSchema: z.object({
         id: z.number().optional().describe('レポートID'),
         date: dateSchema.optional().describe('日付（YYYY-MM-DD）'),
-      }),
+      }).refine(
+        (data) => (data.id !== undefined) !== (data.date !== undefined),
+        { message: 'idまたはdateのいずれか一方を指定してください' }
+      ),
     },
     async (params) => {
-      if (params.id) {
+      if (params.id !== undefined) {
         return handleApiCall(() =>
           apiClient.get<{ report: Report }>(`/api/v1/reports/${params.id}`)
         );
       }
-      if (params.date) {
-        const queryParams = new URLSearchParams({ date: params.date });
-        return handleApiCall(() =>
-          apiClient.get<{ report: Report | null }>(`/api/v1/reports/by_date?${queryParams}`)
-        );
-      }
-      return formatError('VALIDATION_ERROR', 422, {
-        params: ['idまたはdateのいずれかを指定してください'],
-      });
+      const queryParams = new URLSearchParams({ date: params.date as string });
+      return handleApiCall(() =>
+        apiClient.get<{ report: Report | null }>(`/api/v1/reports/by_date?${queryParams}`)
+      );
     }
   );
 

@@ -125,6 +125,54 @@ describe('ApiClient', () => {
       }
     });
 
+    it('500 SERVER_ERROR を分類する', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 503,
+        json: vi.fn().mockResolvedValue({}),
+      };
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse));
+
+      try {
+        await apiClient.get('/api/v1/any');
+        expect.fail('Should have thrown');
+      } catch (e) {
+        expect((e as ApiError).code).toBe('SERVER_ERROR');
+      }
+    });
+
+    it('429 RATE_LIMITED を分類する', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 429,
+        json: vi.fn().mockResolvedValue({}),
+      };
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse));
+
+      try {
+        await apiClient.get('/api/v1/any');
+        expect.fail('Should have thrown');
+      } catch (e) {
+        expect((e as ApiError).code).toBe('RATE_LIMITED');
+      }
+    });
+
+    it('レスポンスが ok でも JSON 解析失敗時は PARSE_ERROR', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockRejectedValue(new Error('invalid json')),
+      };
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse));
+
+      try {
+        await apiClient.get('/api/v1/any');
+        expect.fail('Should have thrown');
+      } catch (e) {
+        expect((e as ApiError).code).toBe('PARSE_ERROR');
+      }
+    });
+
     it('204 No Content の場合はnullを返す', async () => {
       const mockResponse = {
         ok: true,

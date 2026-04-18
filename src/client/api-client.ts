@@ -1,4 +1,5 @@
 import type { AuthManager } from '../auth/auth-manager.js';
+import { classifyHttpError } from '../utils/errors.js';
 
 export class ApiError extends Error {
   constructor(
@@ -9,18 +10,6 @@ export class ApiError extends Error {
     super(`API Error: ${code} (${status})`);
     this.name = 'ApiError';
   }
-}
-
-function classifyError(status: number): string {
-  if (status === 400) return 'BAD_REQUEST';
-  if (status === 401) return 'UNAUTHORIZED';
-  if (status === 403) return 'FORBIDDEN';
-  if (status === 404) return 'NOT_FOUND';
-  if (status === 409) return 'CONFLICT';
-  if (status === 422) return 'VALIDATION_ERROR';
-  if (status === 429) return 'RATE_LIMITED';
-  if (status >= 500) return 'SERVER_ERROR';
-  return 'UNKNOWN_ERROR';
 }
 
 export class ApiClient {
@@ -64,13 +53,13 @@ export class ApiClient {
       data = await response.json();
     } catch {
       throw new ApiError(
-        response.ok ? 'PARSE_ERROR' : classifyError(response.status),
+        response.ok ? 'PARSE_ERROR' : classifyHttpError(response.status),
         response.status
       );
     }
 
     if (!response.ok) {
-      const code = classifyError(response.status);
+      const code = classifyHttpError(response.status);
       const details = data.errors as Record<string, string[]> | undefined;
       throw new ApiError(code, response.status, details);
     }

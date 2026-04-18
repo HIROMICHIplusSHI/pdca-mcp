@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AuthManager } from '../src/auth/auth-manager.js';
-import { unlinkSync, existsSync } from 'fs';
+import { unlinkSync, existsSync, statSync, chmodSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -47,6 +47,67 @@ describe('AuthManager', () => {
       authManager.saveConfig(config);
       expect(existsSync(testConfigPath)).toBe(true);
       expect(authManager.getConfig()).toEqual(config);
+    });
+
+    it('新規作成時にファイル権限 0600 で書き込む', () => {
+      authManager.saveConfig({
+        api_url: 'https://example.com',
+        token: 't',
+        user: { id: 1, name: 'n', email: 'e', role: 'student' as const },
+      });
+      const mode = statSync(testConfigPath).mode & 0o777;
+      expect(mode).toBe(0o600);
+    });
+
+    it('既存の緩い権限ファイルを上書きしても 0600 になる（chmod保証）', () => {
+      // 事前に緩い権限でファイルを作っておく
+      writeFileSync(testConfigPath, '{}', { encoding: 'utf-8' });
+      chmodSync(testConfigPath, 0o644);
+      expect(statSync(testConfigPath).mode & 0o777).toBe(0o644);
+
+      authManager.saveConfig({
+        api_url: 'https://example.com',
+        token: 't',
+        user: { id: 1, name: 'n', email: 'e', role: 'student' as const },
+      });
+      expect(statSync(testConfigPath).mode & 0o777).toBe(0o600);
+    });
+  });
+
+  describe('キャッシュ', () => {
+    it('ファイルが変更されなければ readFileSync は1回しか呼ばれない', () => {
+      authManager.saveConfig({
+        api_url: 'https://example.com',
+        token: 'cached',
+        user: { id: 1, name: 'n', email: 'e', role: 'student' as const },
+      });
+      // saveConfig 時点でキャッシュ投入済み。以降の呼び出しでは readFileSync を叩かない。
+      const fs = require('fs');
+      const spy = vi.spyOn(fs, 'readFileSync');
+      authManager.getToken();
+      authManager.getApiUrl();
+      authManager.getConfig();
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('ファイルが外部で更新されれば再読込される', async () => {
+      authManager.saveConfig({
+        api_url: 'https://old.example.com',
+        token: 'old',
+        user: { id: 1, name: 'n', email: 'e', role: 'student' as const },
+      });
+      expect(authManager.getToken()).toBe('old');
+
+      // mtime を進めるために少し待ってから直接書き換え
+      await new Promise((r) => setTimeout(r, 10));
+      writeFileSync(testConfigPath, JSON.stringify({
+        api_url: 'https://new.example.com',
+        token: 'new',
+        user: { id: 1, name: 'n', email: 'e', role: 'student' },
+      }), { encoding: 'utf-8' });
+
+      expect(authManager.getToken()).toBe('new');
     });
   });
 

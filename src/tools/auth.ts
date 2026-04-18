@@ -4,14 +4,7 @@ import type { ApiClient } from '../client/api-client.js';
 import type { AuthManager } from '../auth/auth-manager.js';
 import type { LoginResponse } from '../types/api-types.js';
 import { formatSuccess, formatError, handleApiCall, type CallToolResult } from '../utils/response.js';
-
-function classifyLoginError(status: number): string {
-  if (status === 401) return 'UNAUTHORIZED';
-  if (status === 403) return 'FORBIDDEN';
-  if (status === 422) return 'VALIDATION_ERROR';
-  if (status === 429) return 'RATE_LIMITED';
-  return 'SERVER_ERROR';
-}
+import { classifyHttpError } from '../utils/errors.js';
 
 export function loginHandler(
   authManager: AuthManager
@@ -39,7 +32,7 @@ export function loginHandler(
         } catch {
           // 非JSONレスポンスの場合は無視
         }
-        return formatError(classifyLoginError(response.status), response.status, errors);
+        return formatError(classifyHttpError(response.status), response.status, errors);
       }
 
       let data: LoginResponse;

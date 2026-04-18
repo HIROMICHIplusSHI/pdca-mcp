@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, chmodSync, statSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import type { AuthConfig } from '../types/api-types.js';
@@ -7,6 +7,7 @@ const DEFAULT_CONFIG_PATH = join(homedir(), '.pdca-mcp.json');
 
 export class AuthManager {
   private readonly configPath: string;
+  private cache: { config: AuthConfig | null; mtimeMs: number } | null = null;
 
   constructor(configPath?: string) {
     this.configPath = configPath ?? DEFAULT_CONFIG_PATH;
@@ -15,17 +16,29 @@ export class AuthManager {
   getConfig(): AuthConfig | null {
     try {
       if (!existsSync(this.configPath)) {
+        this.cache = null;
         return null;
       }
+      // mtime が変わっていなければキャッシュを返す（毎回の readFileSync を回避）
+      const mtimeMs = statSync(this.configPath).mtimeMs;
+      if (this.cache && this.cache.mtimeMs === mtimeMs) {
+        return this.cache.config;
+      }
       const raw = readFileSync(this.configPath, 'utf-8');
-      return JSON.parse(raw) as AuthConfig;
+      const config = JSON.parse(raw) as AuthConfig;
+      this.cache = { config, mtimeMs };
+      return config;
     } catch {
+      this.cache = null;
       return null;
     }
   }
 
   saveConfig(config: AuthConfig): void {
     writeFileSync(this.configPath, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
+    // writeFileSync の `mode` は既存ファイル上書き時に適用されないため明示的に権限を再設定
+    chmodSync(this.configPath, 0o600);
+    this.cache = { config, mtimeMs: statSync(this.configPath).mtimeMs };
   }
 
   deleteConfig(): void {
@@ -36,6 +49,7 @@ export class AuthManager {
     } catch {
       // ファイルが存在しない場合は無視
     }
+    this.cache = null;
   }
 
   getToken(): string | null {
