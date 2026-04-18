@@ -1,7 +1,7 @@
-export interface CallToolResult {
-  content: { type: 'text'; text: string }[];
-  isError?: boolean;
-}
+import type { CallToolResult as SdkCallToolResult } from '@modelcontextprotocol/sdk/types.js';
+
+// SDKの型エイリアスとして再エクスポート
+export type CallToolResult = SdkCallToolResult;
 
 export function formatSuccess(data: unknown): CallToolResult {
   return {
