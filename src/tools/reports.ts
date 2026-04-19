@@ -68,17 +68,29 @@ export function registerReportTools(server: McpServer, apiClient: ApiClient): vo
     'report_show',
     {
       title: 'レポート取得',
-      description: 'IDまたは日付で特定のレポートを取得する',
-      inputSchema: z.object({
+      description: 'IDまたは日付で特定のレポートを取得する（id/dateのいずれか一方を指定）',
+      // 注: MCP SDK は inputSchema から shape を抽出するため ZodEffects(=.refine/.transform 後) を使えない。
+      // id/date の排他制約はスキーマではなくハンドラ側で実装している。
+      inputSchema: {
         id: z.number().optional().describe('レポートID'),
         date: dateSchema.optional().describe('日付（YYYY-MM-DD）'),
-      }).refine(
-        (data) => (data.id !== undefined) !== (data.date !== undefined),
-        { message: 'idまたはdateのいずれか一方を指定してください' }
-      ),
+      },
     },
     async (params) => {
-      if (params.id !== undefined) {
+      const hasId = params.id !== undefined;
+      const hasDate = params.date !== undefined;
+      if (hasId === hasDate) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'エラー: idまたはdateのいずれか一方を指定してください',
+            },
+          ],
+          isError: true,
+        };
+      }
+      if (hasId) {
         return handleApiCall(() =>
           apiClient.get<{ report: Report }>(`/api/v1/reports/${params.id}`)
         );

@@ -71,12 +71,26 @@ describe('Report Tools', () => {
     expect(body).toEqual({ report: { learning_check: '更新' } });
   });
 
-  it('report_show の Zod refine: idとdate両方でバリデーションエラー', () => {
-    const schema = mock.tools.get('report_show')!.config.inputSchema as { safeParse: (v: unknown) => { success: boolean } };
-    expect(schema.safeParse({ id: 1, date: '2026-04-01' }).success).toBe(false);
-    expect(schema.safeParse({}).success).toBe(false);
-    expect(schema.safeParse({ id: 1 }).success).toBe(true);
-    expect(schema.safeParse({ date: '2026-04-01' }).success).toBe(true);
+  it('report_show: idとdate両方指定で isError を返す', async () => {
+    const result = await mock.getHandler('report_show')({ id: 1, date: '2026-04-01' });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('いずれか一方');
+  });
+
+  it('report_show: id/date どちらも未指定で isError を返す', async () => {
+    const result = await mock.getHandler('report_show')({});
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('いずれか一方');
+  });
+
+  it('report_show: id 指定で /api/v1/reports/:id を GET', async () => {
+    await mock.getHandler('report_show')({ id: 1 });
+    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/reports/1');
+  });
+
+  it('report_show: date 指定で /api/v1/reports/by_date を GET', async () => {
+    await mock.getHandler('report_show')({ date: '2026-04-01' });
+    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/reports/by_date?date=2026-04-01');
   });
 });
 
