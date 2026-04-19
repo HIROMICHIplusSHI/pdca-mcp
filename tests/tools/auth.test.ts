@@ -26,7 +26,10 @@ describe('Auth Tools', () => {
   });
 
   describe('loginHandler', () => {
-    it('ログイン成功時にトークンを保存して結果を返す', async () => {
+    it('ログイン成功時にトークンを保存して結果を返す（URLはハードコードから解決）', async () => {
+      (authManager.getApiUrl as ReturnType<typeof vi.fn>).mockReturnValue(
+        'https://pdca-app-475677fd481e.herokuapp.com'
+      );
       const loginResponse = {
         token: 'new-token',
         user: { id: 1, name: '田中', email: 'tanaka@example.com', role: 'student' },
@@ -42,11 +45,10 @@ describe('Auth Tools', () => {
       const result = await handler({
         email: 'tanaka@example.com',
         password: 'pass123',
-        api_url: 'https://example.com',
       });
 
       expect(authManager.saveConfig).toHaveBeenCalledWith({
-        api_url: 'https://example.com',
+        api_url: 'https://pdca-app-475677fd481e.herokuapp.com',
         token: 'new-token',
         user: loginResponse.user,
       });
@@ -56,6 +58,9 @@ describe('Auth Tools', () => {
     });
 
     it('ログイン失敗時にエラーを返す', async () => {
+      (authManager.getApiUrl as ReturnType<typeof vi.fn>).mockReturnValue(
+        'https://pdca-app-475677fd481e.herokuapp.com'
+      );
       const mockFetchResponse = {
         ok: false,
         status: 401,
@@ -67,24 +72,11 @@ describe('Auth Tools', () => {
       const result = await handler({
         email: 'wrong@example.com',
         password: 'wrong',
-        api_url: 'https://example.com',
       });
 
       expect(result.isError).toBe(true);
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.error).toBe('UNAUTHORIZED');
-    });
-
-    it('API URL未指定でgetApiUrlもnullの場合エラーを返す', async () => {
-      (authManager.getApiUrl as ReturnType<typeof vi.fn>).mockReturnValue(null);
-
-      const handler = loginHandler(authManager);
-      const result = await handler({
-        email: 'test@example.com',
-        password: 'pass',
-      });
-
-      expect(result.isError).toBe(true);
     });
   });
 

@@ -112,19 +112,6 @@ describe('ApiClient', () => {
       }
     });
 
-    it('API URLが未設定の場合エラーをthrowする', async () => {
-      (authManager.getApiUrl as ReturnType<typeof vi.fn>).mockReturnValue(null);
-
-      try {
-        await apiClient.get('/api/v1/auth/me');
-        expect.fail('Should have thrown');
-      } catch (e) {
-        expect(e).toBeInstanceOf(ApiError);
-        const err = e as ApiError;
-        expect(err.code).toBe('UNAUTHORIZED');
-      }
-    });
-
     it('500 SERVER_ERROR を分類する', async () => {
       const mockResponse = {
         ok: false,

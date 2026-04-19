@@ -129,9 +129,12 @@ describe('AuthManager', () => {
   });
 
   describe('getToken / getApiUrl', () => {
-    it('設定がない場合nullを返す', () => {
+    it('tokenは設定がない場合nullを返す', () => {
       expect(authManager.getToken()).toBeNull();
-      expect(authManager.getApiUrl()).toBeNull();
+    });
+
+    it('api_urlは設定がない場合ハードコードされた本番URLを返す', () => {
+      expect(authManager.getApiUrl()).toBe('https://pdca-app-475677fd481e.herokuapp.com');
     });
 
     it('設定がある場合値を返す', () => {

@@ -21,10 +21,6 @@ export class ApiClient {
     body?: unknown
   ): Promise<T | null> {
     const apiUrl = this.authManager.getApiUrl();
-    if (!apiUrl) {
-      throw new ApiError('UNAUTHORIZED', 401);
-    }
-
     const token = this.authManager.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
