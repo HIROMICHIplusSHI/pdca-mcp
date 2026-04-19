@@ -2,35 +2,48 @@
 
 PDCA報告アプリ用のMCPサーバー。Claude Code / Claude DesktopからPDCAデータをシームレスに操作できます。
 
-## セットアップ
+## セットアップ（受講生向け）
 
 ### 前提条件
+- Node.js 20以上がインストール済み
+- Claude Code または Claude Desktop がインストール済み
 
-- Node.js 22+
-- PDCA APIサーバーが稼働していること
+### 1コマンドで登録（推奨）
 
-### インストール
+Claude Codeの場合:
+```bash
+claude mcp add -s user pdca-mcp -- npx -y @onclass-dev/pdca-mcp
+```
+
+これだけでOK。`npx` が自動で最新バージョンをダウンロード・実行するため、**アップデート作業は不要**です（次回Claude Code起動時に自動で最新取得）。
+
+### 初回ログイン
+
+Claude Code / Desktop 上で:
+```
+PDCAにログインして
+```
+とお願いすると、メールアドレス・パスワードを聞かれます。入力すると以降は自動で認証されます。
+
+---
+
+## 開発者向けセットアップ
+
+ローカルでコードを変更・検証したい場合:
 
 ```bash
 git clone git@github.com:HIROMICHIplusSHI/pdca-mcp.git
 cd pdca-mcp
 npm install
 npm run build
+
+# ローカルのdist/index.jsを指定して登録
+claude mcp add -s user pdca-mcp-local -- node /path/to/pdca-mcp/dist/index.js
 ```
 
-### Claude Code に登録（stdio）
-
+### Claude Desktop (HTTP) で使う場合
 ```bash
-claude mcp add -s user pdca-mcp -- node /path/to/pdca-mcp/dist/index.js
-```
-
-### Claude Desktop に登録（HTTP）
-
-```bash
-# サーバー起動
 npm run start:http
-
-# 別ターミナルで登録
 claude mcp add -t http pdca-mcp http://localhost:3100/mcp
 ```
 
@@ -115,14 +128,27 @@ Claude Code / Claude Desktop 上で自然言語で操作できます:
 
 ## アップデート
 
+### 受講生（npx経由）
+作業不要。次回Claude Code起動時に自動で最新バージョンが取得されます。
+
+### 開発者（ローカル clone）
 ```bash
 cd /path/to/pdca-mcp
 git pull
 npm install
 npm run build
 ```
-
 stdio: 次回Claude Code起動時に反映。HTTP: サーバー再起動が必要。
+
+## メンテナ向け: 新バージョンの公開
+
+```bash
+npm version patch  # または minor / major
+npm publish
+git push --follow-tags
+```
+
+`prepublishOnly` でビルド+テストが自動実行されます。
 
 ## 開発
 

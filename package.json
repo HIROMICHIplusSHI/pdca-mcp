@@ -1,17 +1,50 @@
 {
-  "name": "pdca-mcp",
+  "name": "@onclass-dev/pdca-mcp",
   "version": "1.0.0",
-  "description": "PDCA報告アプリ用MCPサーバー",
+  "description": "PDCA報告アプリ用MCPサーバー (Claude Code / Claude Desktop 向け)",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "pdca-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/add-shebang.mjs",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "start:http": "node dist/index.js --http --port 3100",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "pdca",
+    "onclass"
+  ],
+  "author": "HIROMICHIplusSHI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HIROMICHIplusSHI/pdca-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HIROMICHIplusSHI/pdca-mcp/issues"
+  },
+  "homepage": "https://github.com/HIROMICHIplusSHI/pdca-mcp#readme",
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
