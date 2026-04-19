@@ -8,15 +8,10 @@ import { classifyHttpError } from '../utils/errors.js';
 
 export function loginHandler(
   authManager: AuthManager
-): (params: { email: string; password: string; api_url?: string }) => Promise<CallToolResult> {
-  return async ({ email, password, api_url }) => {
+): (params: { email: string; password: string }) => Promise<CallToolResult> {
+  return async ({ email, password }) => {
     try {
-      const targetUrl = api_url ?? authManager.getApiUrl() ?? '';
-      if (!targetUrl) {
-        return formatError('UNAUTHORIZED', 401, {
-          api_url: ['API URLを指定してください'],
-        });
-      }
+      const targetUrl = authManager.getApiUrl();
 
       const response = await fetch(`${targetUrl}/api/v1/auth/login`, {
         method: 'POST',
@@ -84,7 +79,6 @@ export function registerAuthTools(
       inputSchema: z.object({
         email: z.string().describe('メールアドレス'),
         password: z.string().describe('パスワード'),
-        api_url: z.string().optional().describe('API URL（初回ログイン時は必須）'),
       }),
     },
     loginHandler(authManager)

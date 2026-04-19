@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, unlinkSync, existsSync, chmodSync, statSyn
 import { join } from 'path';
 import { homedir } from 'os';
 import type { AuthConfig } from '../types/api-types.js';
+import { DEFAULT_API_URL } from '../constants.js';
 
 const DEFAULT_CONFIG_PATH = join(homedir(), '.pdca-mcp.json');
 
@@ -58,9 +59,11 @@ export class AuthManager {
     return this.getConfig()?.token ?? null;
   }
 
-  getApiUrl(): string | null {
+  getApiUrl(): string {
+    // 優先順: 環境変数 > 設定ファイル > ハードコードされた本番URL
+    // 開発時以外は通常ハードコード値に解決される（受講生は URL を意識不要）。
     const envUrl = process.env.PDCA_API_URL;
     if (envUrl) return envUrl;
-    return this.getConfig()?.api_url ?? null;
+    return this.getConfig()?.api_url ?? DEFAULT_API_URL;
   }
 }
