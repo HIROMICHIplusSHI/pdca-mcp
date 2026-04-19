@@ -15,7 +15,7 @@ Claude Codeの場合:
 claude mcp add -s user pdca-mcp -- npx -y @onclass-dev/pdca-mcp
 ```
 
-これだけでOK。`npx` が自動で最新バージョンをダウンロード・実行するため、**アップデート作業は不要**です（次回Claude Code起動時に自動で最新取得）。
+これだけでOK。`npx` 経由で最新バージョンが自動取得されるため、通常はアップデート作業不要です。明示的に最新化したい場合は `npx clear-npx-cache` または `npx -y @onclass-dev/pdca-mcp@latest` を実行してください。
 
 ### 初回ログイン
 

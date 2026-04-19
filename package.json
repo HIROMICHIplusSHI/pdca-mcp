@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "PDCA報告アプリ用MCPサーバー (Claude Code / Claude Desktop 向け)",
   "type": "module",
-  "main": "dist/index.js",
   "bin": {
     "pdca-mcp": "dist/index.js"
   },
