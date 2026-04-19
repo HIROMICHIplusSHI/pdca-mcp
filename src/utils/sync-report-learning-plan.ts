@@ -9,6 +9,15 @@ import type { DailyGoal, Report } from '../types/api-types.js';
  * MCP/CLI 等のAPIクライアントが `report.learning_plan` を信頼する運用のため、
  * goal_update 後に改めて daily_goal_items→learning_plan の再同期を行う。
  *
+ * ⚠️ 方向の対称性:
+ * - 本ヘルパー: `daily_goal_items → report.learning_plan`（goal_update 起点）
+ * - sync-daily-goal.ts: `report.learning_plan → daily_goal_items`（report_create/update 起点）
+ *
+ * どちらも該当ツール成功時のみ発動するため、単発ツール呼び出しでは衝突しない。
+ * 連続呼び出し時は「最後に叩いたツールの入力が勝つ」挙動となる。
+ * なお koki-kato/pdca-app#93（自動テンプレート廃止）が成立すれば
+ * 本ヘルパーは不要化できる見込み。
+ *
  * 仕様:
  * - weekStart/weekEnd どちらか未指定なら no-op
  * - 開始日 > 終了日なら no-op
@@ -34,36 +43,53 @@ export async function syncReportLearningPlanForWeek(
 }
 
 async function syncOneDay(apiClient: ApiClient, date: string): Promise<void> {
+  let dailyGoal: DailyGoal | undefined;
   try {
     const dailyParams = new URLSearchParams({ date });
     const dailyRes = await apiClient.get<{ daily_goals: DailyGoal[] }>(
       `/api/v1/daily_goals?${dailyParams}`
     );
-    const dailyGoal = dailyRes?.daily_goals?.[0];
-    if (!dailyGoal || !dailyGoal.items?.length) return;
+    dailyGoal = dailyRes?.daily_goals?.[0];
+  } catch (e) {
+    console.error(`[sync-report-learning-plan] daily_goals GET失敗 (${date}):`, e);
+    return;
+  }
 
-    const sorted = [...dailyGoal.items].sort((a, b) => a.position - b.position);
-    const contents = sorted.map((i) => i.content ?? '');
-    const allBlank = contents.every((c) => c === '');
-    if (allBlank) return;
+  if (!dailyGoal || !dailyGoal.items?.length) return;
 
-    const joined = contents.join('\n');
+  const sorted = [...dailyGoal.items].sort((a, b) => a.position - b.position);
+  const contents = sorted.map((i) => i.content ?? '');
+  // 全item空の場合はスキップ（既存の learning_plan を空文字で上書きしないための防御）
+  const allBlank = contents.every((c) => c === '');
+  if (allBlank) return;
 
+  const joined = contents.join('\n');
+
+  let report: Report | null | undefined;
+  try {
     const reportParams = new URLSearchParams({ date });
     const reportRes = await apiClient.get<{ report: Report | null }>(
       `/api/v1/reports/by_date?${reportParams}`
     );
-    const report = reportRes?.report;
-    if (!report) return;
+    report = reportRes?.report;
+  } catch (e) {
+    console.error(`[sync-report-learning-plan] report GET失敗 (${date}):`, e);
+    return;
+  }
 
-    if (report.learning_plan === joined) return;
+  if (!report) return;
+  if (report.learning_plan === joined) return;
 
+  try {
     await apiClient.patch<{ report: Report }>(
       `/api/v1/reports/${report.id}`,
       { report: { learning_plan: joined } }
     );
   } catch (e) {
-    console.error(`[sync-report-learning-plan] ${date} の同期に失敗:`, e);
+    console.error(
+      `[sync-report-learning-plan] report PATCH失敗 (report_id=${report.id}, date=${date}):`,
+      e
+    );
   }
 }
 

@@ -79,16 +79,28 @@ export function registerGoalTools(server: McpServer, apiClient: ApiClient): void
     },
     async (params) => {
       const { id, items } = params;
+      let response: { weekly_goal: WeeklyGoal } | null;
       try {
-        const response = await apiClient.patch<{ weekly_goal: WeeklyGoal }>(
+        response = await apiClient.patch<{ weekly_goal: WeeklyGoal }>(
           `/api/v1/weekly_goals/${id}`,
           { items }
         );
-        // goal_update 後、バックエンドが pdca_reports_controller 経由で
-        // report.learning_plan を daily_goal_items.first.content で上書きしうるため、
-        // 正しい値が learning_plan に残るよう週範囲を再同期する。
-        // (詳細: https://github.com/HIROMICHIplusSHI/pdca-mcp/issues/3)
+      } catch (e) {
+        if (e instanceof ApiError) {
+          return formatError(e.code, e.status, e.details);
+        }
+        return formatError('NETWORK_ERROR', 0);
+      }
+
+      // goal_update 後、バックエンドが pdca_reports_controller 経由で
+      // report.learning_plan を daily_goal_items.first.content で上書きしうるため、
+      // 正しい値が learning_plan に残るよう週範囲を再同期する（ベストエフォート）。
+      // 同期呼び出しの失敗が goal_update 本体の成功レスポンスを false negative 化しないよう
+      // 明示的に分離した try/catch で囲む。
+      // (詳細: https://github.com/HIROMICHIplusSHI/pdca-mcp/issues/3)
+      try {
         const goal = response?.weekly_goal;
+        // response は 204 No Content 応答時に null、goal が undefined になる可能性があるので防御
         if (goal?.week_start_date && goal?.week_end_date) {
           await syncReportLearningPlanForWeek(
             apiClient,
@@ -96,13 +108,11 @@ export function registerGoalTools(server: McpServer, apiClient: ApiClient): void
             goal.week_end_date
           );
         }
-        return formatSuccess(response);
       } catch (e) {
-        if (e instanceof ApiError) {
-          return formatError(e.code, e.status, e.details);
-        }
-        return formatError('NETWORK_ERROR', 0);
+        console.error('[goal_update] sync 呼び出しに失敗:', e);
       }
+
+      return formatSuccess(response);
     }
   );
 }
