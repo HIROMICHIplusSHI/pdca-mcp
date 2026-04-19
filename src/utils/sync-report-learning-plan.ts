@@ -37,9 +37,14 @@ export async function syncReportLearningPlanForWeek(
   if (dates.length === 0) return;
 
   // 順次処理: テスト容易性とエラー局所化のため並列化しない（週7日程度なら実用上問題なし）
+  const startedAt = Date.now();
   for (const date of dates) {
     await syncOneDay(apiClient, date);
   }
+  const elapsedMs = Date.now() - startedAt;
+  console.error(
+    `[sync-report-learning-plan] ${dates.length}日分の同期完了 (${elapsedMs}ms)`
+  );
 }
 
 async function syncOneDay(apiClient: ApiClient, date: string): Promise<void> {

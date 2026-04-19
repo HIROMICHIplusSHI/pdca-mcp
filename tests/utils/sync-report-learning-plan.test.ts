@@ -17,10 +17,21 @@ describe('syncReportLearningPlanForWeek', () => {
     } as unknown as ApiClient;
   });
 
-  it('週範囲が未指定ならapiClientを呼ばない', async () => {
+  it('weekStart が空ならapiClientを呼ばない', async () => {
     await syncReportLearningPlanForWeek(apiClient, '', '2026-04-24');
     expect(apiClient.get).not.toHaveBeenCalled();
     expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
+  it('weekEnd が空ならapiClientを呼ばない', async () => {
+    await syncReportLearningPlanForWeek(apiClient, '2026-04-18', '');
+    expect(apiClient.get).not.toHaveBeenCalled();
+    expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
+  it('不正な日付文字列なら何もしない', async () => {
+    await syncReportLearningPlanForWeek(apiClient, 'not-a-date', '2026-04-24');
+    expect(apiClient.get).not.toHaveBeenCalled();
   });
 
   it('日次目標のcontentsをreport.learning_planへ反映する', async () => {
@@ -121,6 +132,99 @@ describe('syncReportLearningPlanForWeek', () => {
         }],
       })
       .mockResolvedValueOnce({ report: null });
+
+    await syncReportLearningPlanForWeek(apiClient, '2026-04-18', '2026-04-18');
+
+    expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
+  it('部分的に空contentが含まれる場合は空行付きで結合される', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        daily_goals: [{
+          id: 100,
+          goal_date: '2026-04-18',
+          weekly_goal_id: 1,
+          items: [
+            { id: 11, content: 'A', progress: 0, position: 0 },
+            { id: 12, content: '', progress: 0, position: 1 },
+            { id: 13, content: 'C', progress: 0, position: 2 },
+          ],
+        }],
+      })
+      .mockResolvedValueOnce({
+        report: { id: 1001, report_date: '2026-04-18', learning_plan: 'old' },
+      });
+
+    await syncReportLearningPlanForWeek(apiClient, '2026-04-18', '2026-04-18');
+
+    expect(apiClient.patch).toHaveBeenCalledWith(
+      '/api/v1/reports/1001',
+      { report: { learning_plan: 'A\n\nC' } }
+    );
+  });
+
+  it('items空配列（daily_goalはあるがitems=[]）なら更新しない', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        daily_goals: [{
+          id: 100,
+          goal_date: '2026-04-18',
+          weekly_goal_id: 1,
+          items: [],
+        }],
+      });
+
+    await syncReportLearningPlanForWeek(apiClient, '2026-04-18', '2026-04-18');
+
+    expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
+  it('daily_goalsキー欠落レスポンスでも更新しない', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({});
+
+    await syncReportLearningPlanForWeek(apiClient, '2026-04-18', '2026-04-18');
+
+    expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
+  it('item.content が null/undefined なら空文字として扱う', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        daily_goals: [{
+          id: 100,
+          goal_date: '2026-04-18',
+          weekly_goal_id: 1,
+          items: [
+            { id: 11, content: 'A', progress: 0, position: 0 },
+            { id: 12, content: null, progress: 0, position: 1 },
+          ],
+        }],
+      })
+      .mockResolvedValueOnce({
+        report: { id: 1001, report_date: '2026-04-18', learning_plan: 'old' },
+      });
+
+    await syncReportLearningPlanForWeek(apiClient, '2026-04-18', '2026-04-18');
+
+    expect(apiClient.patch).toHaveBeenCalledWith(
+      '/api/v1/reports/1001',
+      { report: { learning_plan: 'A\n' } }
+    );
+  });
+
+  it('report GET が null(204相当) を返したらスキップ', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        daily_goals: [{
+          id: 100,
+          goal_date: '2026-04-18',
+          weekly_goal_id: 1,
+          items: [{ id: 11, content: 'A', progress: 0, position: 0 }],
+        }],
+      })
+      .mockResolvedValueOnce(null);
 
     await syncReportLearningPlanForWeek(apiClient, '2026-04-18', '2026-04-18');
 

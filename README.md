@@ -112,6 +112,13 @@ Claude Code / Claude Desktop 上で自然言語で操作できます:
 - 行数 < item数 の場合、余った item は変更せず残す
 - 行数 > item数 の場合、余った行は無視
 
+### 双方向同期の挙動
+
+- `report_create` / `report_update`: `learning_plan` → `daily_goal_items` へ伝搬
+- `goal_update`: `daily_goal_items` → `report.learning_plan` へ逆伝搬（バックエンドが意図せず上書きするのを救済）
+
+**last wins ルール**: 同じ週に対して `report_update` と `goal_update` を連続で叩いた場合、**最後に呼んだツールの入力が勝つ**。通常運用では問題になりませんが、自動化スクリプト等で短時間に両方を叩く場合は実行順序に注意してください。
+
 ---
 
 ## 環境変数
