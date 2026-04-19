@@ -2,7 +2,9 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ApiClient } from '../client/api-client.js';
 import type { WeeklyGoal } from '../types/api-types.js';
-import { handleApiCall } from '../utils/response.js';
+import { formatSuccess, formatError, handleApiCall } from '../utils/response.js';
+import { ApiError } from '../client/api-client.js';
+import { syncReportLearningPlanForWeek } from '../utils/sync-report-learning-plan.js';
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付はYYYY-MM-DD形式で指定してください');
 
@@ -77,9 +79,40 @@ export function registerGoalTools(server: McpServer, apiClient: ApiClient): void
     },
     async (params) => {
       const { id, items } = params;
-      return handleApiCall(() =>
-        apiClient.patch<{ weekly_goal: WeeklyGoal }>(`/api/v1/weekly_goals/${id}`, { items })
-      );
+      let response: { weekly_goal: WeeklyGoal } | null;
+      try {
+        response = await apiClient.patch<{ weekly_goal: WeeklyGoal }>(
+          `/api/v1/weekly_goals/${id}`,
+          { items }
+        );
+      } catch (e) {
+        if (e instanceof ApiError) {
+          return formatError(e.code, e.status, e.details);
+        }
+        return formatError('NETWORK_ERROR', 0);
+      }
+
+      // goal_update 後、バックエンドが pdca_reports_controller 経由で
+      // report.learning_plan を daily_goal_items.first.content で上書きしうるため、
+      // 正しい値が learning_plan に残るよう週範囲を再同期する（ベストエフォート）。
+      // 同期呼び出しの失敗が goal_update 本体の成功レスポンスを false negative 化しないよう
+      // 明示的に分離した try/catch で囲む。
+      // (詳細: https://github.com/HIROMICHIplusSHI/pdca-mcp/issues/3)
+      try {
+        const goal = response?.weekly_goal;
+        // response は 204 No Content 応答時に null、goal が undefined になる可能性があるので防御
+        if (goal?.week_start_date && goal?.week_end_date) {
+          await syncReportLearningPlanForWeek(
+            apiClient,
+            goal.week_start_date,
+            goal.week_end_date
+          );
+        }
+      } catch (e) {
+        console.error('[goal_update] sync 呼び出しに失敗:', e);
+      }
+
+      return formatSuccess(response);
     }
   );
 }
