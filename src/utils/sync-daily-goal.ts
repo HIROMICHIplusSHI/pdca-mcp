@@ -37,7 +37,8 @@ export async function syncDailyGoalForDate(
   if (!dailyGoal || !dailyGoal.items?.length) return;
 
   const goalId = dailyGoal.id;
-  const lines = learningPlan.split(/\r?\n/);
+  // 末尾改行は無視（ユーザーが末尾改行付きで送ると2行目のitemが空文字で上書きされるのを防ぐ）
+  const lines = learningPlan.replace(/\n+$/, '').split(/\r?\n/);
   const sortedItems = [...dailyGoal.items].sort(
     (a, b) => a.position - b.position
   );

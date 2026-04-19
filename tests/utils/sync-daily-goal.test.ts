@@ -170,6 +170,60 @@ describe('syncDailyGoalForDate', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('末尾改行は無視する（2行目itemを空で上書きしない）', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      daily_goals: [
+        {
+          id: 100,
+          goal_date: '2026-04-18',
+          weekly_goal_id: 10,
+          items: [
+            { id: 11, content: '旧1', progress: 0, position: 0 },
+            { id: 12, content: '旧2', progress: 0, position: 1 },
+          ],
+        },
+      ],
+    });
+
+    await syncDailyGoalForDate(apiClient, '2026-04-18', 'MCP実装\n');
+
+    expect(apiClient.patch).toHaveBeenCalledTimes(1);
+    expect(apiClient.patch).toHaveBeenCalledWith(
+      '/api/v1/daily_goals/100/items/11',
+      { content: 'MCP実装' }
+    );
+  });
+
+  it('末尾改行が複数でも無視する', async () => {
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      daily_goals: [
+        {
+          id: 100,
+          goal_date: '2026-04-18',
+          weekly_goal_id: 10,
+          items: [
+            { id: 11, content: '旧1', progress: 0, position: 0 },
+            { id: 12, content: '旧2', progress: 0, position: 1 },
+          ],
+        },
+      ],
+    });
+
+    await syncDailyGoalForDate(apiClient, '2026-04-18', '行1\n行2\n\n\n');
+
+    expect(apiClient.patch).toHaveBeenCalledTimes(2);
+    expect(apiClient.patch).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/daily_goals/100/items/11',
+      { content: '行1' }
+    );
+    expect(apiClient.patch).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/daily_goals/100/items/12',
+      { content: '行2' }
+    );
+  });
+
   it('CRLF改行でも正しく分割する', async () => {
     (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
       daily_goals: [

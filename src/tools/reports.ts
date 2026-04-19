@@ -139,6 +139,10 @@ export function registerReportTools(server: McpServer, apiClient: ApiClient): vo
             response.report.report_date,
             reportFields.learning_plan
           );
+        } else if (reportFields.learning_plan && !response?.report?.report_date) {
+          console.error(
+            '[sync-daily-goal] report_update 応答に report_date が含まれず同期をスキップ'
+          );
         }
         return formatSuccess(response);
       } catch (e) {
