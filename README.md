@@ -77,6 +77,14 @@ Claude Code / Claude Desktop 上で自然言語で操作できます:
 - `daily_list` - 日次目標一覧
 - `daily_update` - 日次目標更新
 
+> **注**: `report_create` / `report_update` で `learning_plan` を指定すると、該当日の日次目標アイテムへ自動反映されます（改行区切りで `items` に position 昇順マッピング）。アプリUI（Rails HTML）はHTMLコントローラ側で `find_or_create_daily_goal` による紐付けが行われるため問題にならないが、API直叩きでは紐付けがなく表示が乖離する。この同期はAPIクライアント側の責務として実装（[koki-kato/pdca-app#90](https://github.com/koki-kato/pdca-app/issues/90) で合意済み・クローズ）。
+>
+> **同期仕様の詳細**:
+> - 末尾改行（`"a\n"` の `\n` 部分）は無視
+> - 中間の空行（`"a\n\nc"` の2行目）は空文字として対応する item を上書き
+> - 行数 < item数 の場合、余った item は変更せず残す
+> - 行数 > item数 の場合、余った行は無視
+
 ### コメント（3）
 - `comment_list` - コメント一覧
 - `comment_create` - コメント作成
