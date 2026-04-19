@@ -1,7 +1,7 @@
 {
-  "name": "@onclass-dev/pdca-mcp",
-  "version": "1.0.0",
-  "description": "PDCA報告アプリ用MCPサーバー (Claude Code / Claude Desktop 向け)",
+  "name": "@proaca-dev/pdca-mcp",
+  "version": "0.1.0",
+  "description": "PDCA報告アプリ用MCPサーバー (Claude Code / Claude Desktop 向け・非公式開発版)",
   "type": "module",
   "bin": {
     "pdca-mcp": "dist/index.js"
@@ -30,7 +30,7 @@
     "claude",
     "claude-code",
     "pdca",
-    "onclass"
+    "proaca"
   ],
   "author": "HIROMICHIplusSHI",
   "license": "MIT",

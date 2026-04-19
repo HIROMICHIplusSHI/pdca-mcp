@@ -1,6 +1,14 @@
 # PDCA MCP Server
 
-PDCA報告アプリ用のMCPサーバー。Claude Code / Claude DesktopからPDCAデータをシームレスに操作できます。
+PDCA報告アプリ（proaca）用のMCPサーバー。Claude Code / Claude DesktopからPDCAデータをシームレスに操作できます。
+
+> **⚠️ 非公式開発スコープ**
+> 本パッケージは `@proaca-dev` スコープで配布される**非公式開発版**です（`-dev` サフィックスは業界慣習で非公式/開発系を示します）。proaca の正式サービスとは独立して個人メンテされており、API互換性やサポートは保証されません。
+>
+> - **対象**: proaca 受講生・インターンの限定利用
+> - **対象外の利用**: サポート外（issue対応不可）
+> - **バージョン**: `0.x`（破壊的変更を許容）。`1.0.0` は全展開フェーズで切ります
+> - **問題発生時**: [Issues](https://github.com/HIROMICHIplusSHI/pdca-mcp/issues) へ
 
 ---
 
@@ -13,7 +21,7 @@ PDCA報告アプリ用のMCPサーバー。Claude Code / Claude DesktopからPDC
 ### 1コマンドで導入
 
 ```bash
-claude mcp add -s user pdca-mcp -- npx -y @onclass-dev/pdca-mcp
+claude mcp add -s user pdca-mcp -- npx -y @proaca-dev/pdca-mcp
 ```
 
 ### 初回ログイン
@@ -28,7 +36,7 @@ Claude Code / Desktop 上で「PDCAにログインして」とお願いすると
 ```bash
 npx clear-npx-cache
 # または
-npx -y @onclass-dev/pdca-mcp@latest
+npx -y @proaca-dev/pdca-mcp@latest
 ```
 
 ---
@@ -119,6 +127,7 @@ Claude Code / Claude Desktop 上で自然言語で操作できます:
 - 共有端末では使用しないでください。`logout` ツールで削除可能です
 - 共有端末では、ファイル保存を避けるために環境変数 `PDCA_TOKEN` / `PDCA_API_URL` でトークンを渡す運用を推奨（設定ファイルより優先されます）
 - トークン漏洩が疑われる場合は、PDCAアプリ側で再ログインして旧トークンを無効化してください
+- **API URL の入力**: `login` ツールで `api_url` を指定する際は、必ず proaca の正規 URL（講師・運営から案内されたもの）のみを入力してください。第三者から受け取った URL を安易に入力すると、認証情報漏洩リスクがあります
 
 ---
 
